@@ -149,3 +149,36 @@ class MovingCircle(SetOfMovingPoints):
     def __init__(self, x0, y0, radius, angle=0, velocity=1):
         points = list(Circle.get_points(x0, y0, radius))
         super().__init__(points, angle, velocity)
+
+
+class Line(SetOfPoints):
+    def __init__(self, point1: tuple, point2: tuple):
+        points = list(self.line_equation(*point1, *point2))
+        super().__init__(points)
+        # TO-DO: add line
+
+    @staticmethod
+    def line_equation(x1, y1, x2, y2):
+        line_points = set()
+        if x1 != x2:
+            k = (y1 - y2) / (x1 - x2)
+            b = y2 - k * x2
+            #  y = kx + b, x = (y - b)/k
+            for x in range(min(x1, x2),max(x1,x2)):
+                y = k * x + b
+                line_points.add((x, round(y)))
+            for y in range(min(y1, y2), max(y1,y2)):
+                x = (y - b) / k
+                line_points.add((round(x), y))
+        else:
+            for y in range(min(y1, y2), max(y1, y2)):
+                line_points.add((round(x1), y))
+        return line_points
+
+
+class MovingLine(SetOfMovingPoints):
+    def __init__(self, point1, point2, angle=0, velocity=1):
+        points = list(Line.line_equation(*point1, *point2))
+        self.angle = angle
+        self.velocity = velocity
+        super().__init__(points, angle, velocity)
