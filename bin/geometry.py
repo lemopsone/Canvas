@@ -33,16 +33,20 @@ class Board:
 
     @classmethod
     def draw(cls):
-        for x, y in cls.points.values():
+        for x, y, color in cls.points.values():
             x, y = map(round, (x, y))
-            Board.place_point(x, y)
+            Board.place_point(x, y, color)
         for line in cls.__board:
-            Console.write(line)
+            for symbol in line:
+                Console.write(symbol)
 
     @classmethod
-    def place_point(cls, x, y):
+    def place_point(cls, x, y, color):
         x, y = x + 1, y + 1
-        cls.__board[y] = cls.__board[y][:x] + Board.POINT_MARKER + cls.__board[y][x + 1:]
+        if color is None:
+            cls.__board[y] = list(cls.__board[y][:x]) + list(Board.POINT_MARKER) + list(cls.__board[y][x + 1:])
+        else:
+            cls.__board[y] = list(cls.__board[y][:x]) + [f"\033[1;{color}m" + Board.POINT_MARKER + "\033[0m"] + list(cls.__board[y][x + 1:])
 
     @classmethod
     def clear(cls):
@@ -61,13 +65,14 @@ class Board:
 
 
 class Point:
-    def __init__(self, x, y):
+    def __init__(self, x, y, color=None):
         self.x = x
         self.y = y
+        self.color = color
         self.place()
 
     def place(self):
-        Board.points[id(self)] = (self.x, self.y)
+        Board.points[id(self)] = (self.x, self.y, self.color)
 
     @staticmethod
     def distance(x, y, x0=BOARD_CENTER, y0=BOARD_CENTER):
@@ -75,13 +80,14 @@ class Point:
 
 
 class MovingPoint(Point):
-    def __init__(self, x, y, angle=0, velocity=1):
-        super().__init__(x, y)
+    def __init__(self, x, y, angle=0, velocity=1, color=None):
+        super().__init__(x, y, color)
         self.angle = angle
         self.velocity = velocity
         self.step_x, self.step_y = self.step()
 
     def move(self):
+        self.step_x, self.step_y = self.step()
         if self.collides():
             self.velocity *= -1
         self.x += self.step_x * self.velocity
@@ -99,25 +105,36 @@ class MovingPoint(Point):
 
 
 class SetOfPoints:
-    def __init__(self, points: list[tuple]):
+    def __init__(self, points: list[tuple], color=None):
         self.set_points = []
         for x, y in points:
-            self.set_points.append(Point(x, y))
+            self.set_points.append(Point(x, y, color))
 
 
 class SetOfMovingPoints:
-    def __init__(self, points: list[tuple], angle=0, velocity=1):
+    def __init__(self, points: list[tuple], angle=0, velocity=1, bounce=False, color=None):
+        self.bounce = bounce
         self.set_points = []
         self.angle = angle
         self.velocity = velocity
         for x, y in points:
-            self.set_points.append(MovingPoint(x, y, angle, velocity))
+            self.set_points.append(MovingPoint(x, y, angle, velocity, color))
 
     def move(self):
         if any(point.collides() for point in self.set_points):
-            self.velocity *= -1
-            for point in self.set_points:
-                point.velocity = self.velocity
+            if self.bounce:
+                if any(not (0 <= point.y + point.step_y * point.velocity < Board.SIZE) for point in self.set_points):
+                    self.velocity *= -1
+                    for point in self.set_points:
+                        point.angle = (180 - point.angle)
+                        point.velocity = self.velocity
+                else:
+                    for point in self.set_points:
+                        point.angle = (180 - point.angle)
+            else:
+                self.velocity *= -1
+                for point in self.set_points:
+                    point.velocity = self.velocity
         for point in self.set_points:
             point.move()
 
@@ -146,15 +163,15 @@ class Circle(SetOfPoints):
 
 
 class MovingCircle(SetOfMovingPoints):
-    def __init__(self, x0, y0, radius, angle=0, velocity=1):
+    def __init__(self, x0, y0, radius, angle=0, velocity=1, bounce=False, color=None):
         points = list(Circle.get_points(x0, y0, radius))
-        super().__init__(points, angle, velocity)
+        super().__init__(points, angle, velocity, bounce, color)
 
 
 class Line(SetOfPoints):
-    def __init__(self, point1: tuple, point2: tuple):
+    def __init__(self, point1: tuple, point2: tuple, color=None):
         points = list(self.line_equation(*point1, *point2))
-        super().__init__(points)
+        super().__init__(points, color)
         # TO-DO: add line
 
     @staticmethod
@@ -164,10 +181,10 @@ class Line(SetOfPoints):
             k = (y1 - y2) / (x1 - x2)
             b = y2 - k * x2
             #  y = kx + b, x = (y - b)/k
-            for x in range(min(x1, x2),max(x1,x2)):
+            for x in range(min(x1, x2), max(x1, x2)):
                 y = k * x + b
                 line_points.add((x, round(y)))
-            for y in range(min(y1, y2), max(y1,y2)):
+            for y in range(min(y1, y2), max(y1, y2)):
                 x = (y - b) / k
                 line_points.add((round(x), y))
         else:
@@ -177,8 +194,8 @@ class Line(SetOfPoints):
 
 
 class MovingLine(SetOfMovingPoints):
-    def __init__(self, point1, point2, angle=0, velocity=1):
+    def __init__(self, point1, point2, angle=0, velocity=1, bounce=False, color=None):
         points = list(Line.line_equation(*point1, *point2))
         self.angle = angle
         self.velocity = velocity
-        super().__init__(points, angle, velocity)
+        super().__init__(points, angle, velocity, bounce, color)
