@@ -1,16 +1,21 @@
-import bin.geometry as canvas
+import random
+import time
+import os
+import bin.canvas as canvas
 
 
 def main():
     #  initial placement
     b = canvas.Board()
-    circle = canvas.Circle(5, 5, 5)
-    moving_circle = canvas.MovingCircle(25, 25, 5, 45, 1)
-    point = canvas.Point(30, 30)
-    moving_point = canvas.MovingPoint(25, 25, 90, 2)
+    circles = [
+        canvas.Circle(random.randrange(3, 48), random.randrange(3, 48), radius=3,
+                      color=30 + i % 8) for i in range(10)]
+    for circle in circles:
+        circle.set_direction(angle=random.randrange(0, 361),
+                             velocity=1, bounce=True, )
     while True:
-        moving_point.move()
-        moving_circle.move()
+        for circle in circles:
+            circle.move_direction()
         b.update()
 
 
