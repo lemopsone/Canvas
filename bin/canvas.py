@@ -31,6 +31,7 @@ class Board:
     SIZE = BOARD_SIZE
     POINT_MARKER = BOARD_MARKER
     points = dict()
+    looped = list()
 
     def __init__(self):
         os.system("printf '\e[3;0;0t'")
@@ -64,6 +65,8 @@ class Board:
     def update(cls):
         cls.clear()
         cls.draw()
+        for obj in cls.looped:
+            obj.move_direction()
         time.sleep(1 / FPS)
 
 
@@ -142,6 +145,15 @@ class Point:
         return not ((0 <= self.x + self.step_x * self.velocity < Board.SIZE) and (
                 0 <= self.y + self.step_y * self.velocity < Board.SIZE))
 
+    def loop(self):
+        if self.angle is not None:
+            if self not in Board.looped:
+                Board.looped.append(self)
+
+    def stop(self):
+        if self in Board.looped:
+            Board.looped.remove(self)
+
 
 class SetOfPoints:
     def __init__(self, points: list[tuple], color=DEFAULT_COLOR):
@@ -181,8 +193,8 @@ class SetOfPoints:
             for point in self.set_points:
                 point.move_direction()
             if isinstance(self, Circle):
-                self.x0 = self.p0.velocity * self.p0.step_x
-                self.y0 = self.p0.velocity * self.p0.step_y
+                self.x0 += self.p0.velocity * self.p0.step_x
+                self.y0 += self.p0.velocity * self.p0.step_y
 
     def move_rel(self, x, y):
         if all(point.inside_borders(x, y) for point in self.set_points):
@@ -201,6 +213,15 @@ class SetOfPoints:
             if isinstance(self, Circle):
                 self.x0 += x
                 self.y0 += y
+
+    def loop(self):
+        if self.angle is not None:
+            if self not in Board.looped:
+                Board.looped.append(self)
+
+    def stop(self):
+        if self in Board.looped:
+            Board.looped.remove(self)
 
 
 class Circle(SetOfPoints):
@@ -234,7 +255,7 @@ class Circle(SetOfPoints):
 
 
 class Line(SetOfPoints):
-    def __init__(self, point1: tuple, point2: tuple, color=None):
+    def __init__(self, point1: tuple, point2: tuple, color=DEFAULT_COLOR):
         points = list(self.line_equation(*point1, *point2))
         super().__init__(points, color)
         # TO-DO: add line
